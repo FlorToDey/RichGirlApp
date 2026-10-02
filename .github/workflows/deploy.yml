@@ -1,0 +1,25 @@
+name: Deploy server
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['server/**', 'web/**', 'Dockerfile', 'docker-compose.yml', 'scripts/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack
+        run: tar czf /tmp/golddigg.tgz --exclude=.git --exclude='web/android' --exclude='releases' .
+      - name: Upload and start
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER || 'root' }}
+        run: |
+          sudo apt-get install -y sshpass >/dev/null
+          OPTS="-o StrictHostKeyChecking=no"
+          sshpass -e scp $OPTS /tmp/golddigg.tgz "$USER@$HOST:/tmp/golddigg.tgz"
+          sshpass -e ssh $OPTS "$USER@$HOST" 'mkdir -p /opt/golddigg && tar xzf /tmp/golddigg.tgz -C /opt/golddigg && APP_DIR=/opt/golddigg bash /opt/golddigg/scripts/server-install.sh'

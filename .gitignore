@@ -6,5 +6,5 @@ data/
 web/android/app/build/
 web/android/.gradle/
 web/android/local.properties
-*.apk
+web/android/**/*.apk
 .ccr-ca.crt

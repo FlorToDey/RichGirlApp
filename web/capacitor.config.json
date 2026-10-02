@@ -1,0 +1,24 @@
+{
+  "appId": "com.golddigg.app",
+  "appName": "GoldDigg",
+  "webDir": "dist",
+  "backgroundColor": "#0d0b10",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "backgroundColor": "#0d0b10",
+      "showSpinner": false
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK"
+    }
+  }
+}
