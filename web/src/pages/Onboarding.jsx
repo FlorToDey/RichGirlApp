@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Gem, Home, MapPin, Pencil, Sailboat, Star, Building2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Gem, Home, MapPin, Pencil, Sailboat, Star, Building2 } from 'lucide-react'
 import { useSession } from '../session.jsx'
 import { api, media, money } from '../api.js'
 import PhotoPicker from '../components/PhotoPicker.jsx'
@@ -317,39 +317,54 @@ const ROLES = [
 
 function RolePicker({ onPick, current }) {
   const [picked, setPicked] = useState(null)
-  const [origin, setOrigin] = useState({ x: '50%', y: '50%' })
+  const [leaving, setLeaving] = useState(false)
 
-  const pick = (r, e) => {
+  const pick = (r) => {
     if (picked) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    setOrigin({ x: `${(e.clientX || rect.left + rect.width / 2) - rect.left}px`, y: `${(e.clientY || rect.top + rect.height / 2) - rect.top}px` })
     setPicked(r)
-    setTimeout(() => onPick(r), 1050)
+    setTimeout(() => setLeaving(true), 900)
+    setTimeout(() => onPick(r), 1250)
   }
 
   return (
-    <motion.div className="role-grid" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.55, duration: 0.45, ease }}>
-      <AnimatePresence mode="popLayout">
-        {ROLES.filter((r) => !picked || r.id === picked).map((r) => (
-          <motion.button type="button" key={r.id} layoutId={`role-${r.id}`} layout
-            className={`role-card ${picked === r.id ? 'picked' : ''} ${current === r.id && !picked ? 'was' : ''}`}
-            style={{ borderRadius: 24, gridColumn: picked ? '1 / -1' : undefined }}
-            onClick={(e) => pick(r.id, e)}
+    <motion.div className="role-grid" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ delay: 0.55, duration: 0.45, ease }}>
+      {ROLES.map((r) => {
+        const on = picked === r.id
+        const off = picked && !on
+        return (
+          <motion.button type="button" key={r.id} layoutId={`role-${r.id}`}
+            className={`role-card ${on ? 'picked' : ''} ${current === r.id && !picked ? 'was' : ''}`}
+            style={{ borderRadius: 24 }}
+            onClick={() => pick(r.id)}
+            animate={off ? { opacity: leaving ? 0 : 0.18, scale: leaving ? 0.88 : 0.94, y: leaving ? 18 : 10, filter: 'grayscale(1)' } : on ? { y: -4 } : { opacity: 1, scale: 1, y: 0, filter: 'grayscale(0)' }}
             whileHover={picked ? undefined : { rotate: [0, -2.2, 2.2, -1.4, 1.4, 0], y: -3, transition: { duration: 0.5 } }}
             whileTap={picked ? undefined : { scale: 0.97 }}
-            exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.25 } }}
-            transition={{ layout: { duration: 0.55, ease } }}>
-            {picked === r.id && (
-              <motion.span className="role-flood" style={{ left: origin.x, top: origin.y }}
-                initial={{ scale: 0, opacity: 0.9 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.7, ease }} />
+            transition={{ duration: 0.5, ease, layout: { duration: 0.55, ease } }}>
+            {on && (
+              <>
+                <motion.span className="role-tint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} />
+                <svg className="role-trace" aria-hidden>
+                  <defs>
+                    <linearGradient id={`trace-${r.id}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#fff0c4" /><stop offset=".5" stopColor="#f3c969" /><stop offset="1" stopColor="#c47d2e" />
+                    </linearGradient>
+                  </defs>
+                  <motion.rect x="1" y="1" rx="23" fill="none" stroke={`url(#trace-${r.id})`} strokeWidth="2"
+                    style={{ width: 'calc(100% - 2px)', height: 'calc(100% - 2px)' }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.75, ease: 'easeInOut' }} />
+                </svg>
+                <motion.span className="role-shine" initial={{ x: '-130%' }} animate={{ x: '130%' }} transition={{ delay: 0.35, duration: 0.8, ease: 'easeInOut' }} />
+                <motion.span className="role-seal" initial={{ scale: 0, rotate: -40, opacity: 0 }} animate={{ scale: [0, 1.25, 1], rotate: 0, opacity: 1 }} transition={{ delay: 0.45, duration: 0.5, ease }}>
+                  <Check size={16} strokeWidth={3} />
+                </motion.span>
+              </>
             )}
-            <motion.span layout="position" className="role-emoji"
-              animate={picked === r.id ? { scale: [1, 1.35, 1.15], rotate: [0, -12, 6, 0] } : {}} transition={{ duration: 0.7 }}>{r.emoji}</motion.span>
-            <motion.strong layout="position">{r.title}</motion.strong>
-            <motion.span layout="position" className="role-text">{r.text}</motion.span>
+            <motion.span className="role-emoji" animate={on ? { scale: [1, 1.18, 1.08], rotate: [0, -8, 0] } : {}} transition={{ duration: 0.6 }}>{r.emoji}</motion.span>
+            <strong>{r.title}</strong>
+            <span className="role-text">{r.text}</span>
           </motion.button>
-        ))}
-      </AnimatePresence>
+        )
+      })}
     </motion.div>
   )
 }

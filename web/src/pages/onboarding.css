@@ -54,13 +54,12 @@
 }
 .role-card:hover { border-color: rgba(243, 201, 105, 0.55); }
 .role-card.was { border-color: rgba(243, 201, 105, 0.55); }
-.role-card > *:not(.role-flood) { position: relative; z-index: 1; }
+.role-card > .role-emoji, .role-card > strong, .role-card > .role-text { position: relative; z-index: 2; }
 .role-emoji { font-size: 42px; line-height: 1; margin-bottom: 10px; display: inline-block; width: fit-content; }
 .role-card strong { font-size: 19px; }
 .role-text { color: var(--muted); font-size: 14px; line-height: 1.4; transition: color 0.4s; }
-.role-card.picked { border-color: transparent; color: #2a1a06; min-height: 150px; }
-.role-card.picked .role-text { color: rgba(42, 26, 6, 0.75); }
-.role-flood { position: absolute; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; border-radius: 50%; background: radial-gradient(circle, #ffe7a8 0%, #f3c969 35%, #d08a37 70%); z-index: 0; pointer-events: none; }
+.role-card.picked { border-color: transparent; box-shadow: 0 18px 50px rgba(243, 201, 105, 0.16); }
+.role-card.picked strong { color: var(--gold-hi); }
 
 /* wealth */
 .worth-box { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 18px 6px 6px; }
@@ -106,3 +105,8 @@
   .role-card { min-height: 180px; padding: 18px 14px; }
   .bot-bubble { font-size: 15px; }
 }
+
+.role-tint { position: absolute; inset: 0; z-index: 0; background: radial-gradient(120% 90% at 30% 0%, rgba(243, 201, 105, 0.2), rgba(243, 201, 105, 0.03) 60%, transparent); pointer-events: none; }
+.role-trace { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; filter: drop-shadow(0 0 6px rgba(243, 201, 105, 0.55)); }
+.role-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 60%; z-index: 1; pointer-events: none; transform: skewX(-18deg); background: linear-gradient(90deg, transparent, rgba(255, 240, 196, 0.16), transparent); }
+.role-seal { position: absolute; top: 14px; right: 14px; z-index: 4; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #1a1208; background: radial-gradient(circle at 35% 30%, #fff3cf, #f3c969 45%, #b8741f); box-shadow: 0 0 0 3px rgba(243, 201, 105, 0.18), 0 6px 16px rgba(0, 0, 0, 0.45); }
