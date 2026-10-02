@@ -1,0 +1,13 @@
+services:
+  golddigg:
+    build: .
+    image: golddigg
+    container_name: golddigg
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    volumes:
+      - golddigg-data:/data
+
+volumes:
+  golddigg-data:
