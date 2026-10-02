@@ -178,3 +178,13 @@ textarea.input { height: auto; min-height: 110px; padding: 14px 18px; resize: no
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* no browser-native bits on our inputs */
+input::-ms-reveal, input::-ms-clear { display: none; }
+input::-webkit-search-cancel-button, input::-webkit-inner-spin-button, input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface3) inset;
+  caret-color: var(--text);
+  transition: background-color 9999s;
+}

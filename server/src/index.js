@@ -207,16 +207,23 @@ app.put('/api/me', auth, (req, res) => {
     bio: str(b.bio, 500),
     photos: JSON.stringify(photos),
     skills: JSON.stringify(strList(b.skills, 8, 40)),
-    net_worth: null, main_car: null, companies: '[]', income_source: null, realty: null, yacht: null, allowance: null,
+    net_worth: null, main_car: null, cars: '[]', companies: '[]', income_source: null, realty: null, yacht: null, allowance: null,
   }
   if (role === 'f') {
     const worth = int(b.netWorth, 0, 1e13)
     if (!worth) return res.status(400).json({ error: 'Укажи состояние. Это главное поле, без него никак' })
+    const cars = (Array.isArray(b.cars) ? b.cars : [])
+      .map((c) => ({ name: str(c?.name, 80), main: !!c?.main }))
+      .filter((c) => c.name)
+      .slice(0, 12)
+    if (cars.length && !cars.some((c) => c.main)) cars[0].main = true
+    cars.forEach((c, i) => { if (c.main && cars.findIndex((x) => x.main) !== i) c.main = false })
     Object.assign(fields, {
       net_worth: worth,
-      main_car: str(b.mainCar, 80),
+      main_car: cars.find((c) => c.main)?.name || null,
+      cars: JSON.stringify(cars),
       companies: JSON.stringify(strList(b.companies, 10, 60)),
-      income_source: str(b.incomeSource, 80),
+      income_source: null,
       realty: str(b.realty, 120),
       yacht: str(b.yacht, 80),
       allowance: int(b.allowance, 0, 1e9),

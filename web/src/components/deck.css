@@ -97,3 +97,22 @@
 
 .av-online { position: absolute; right: 0; bottom: 0; border-radius: 50%; background: var(--green); border: 2px solid var(--bg); }
 .av-ring img, .av-ring .avatar-fallback { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }
+
+.garage { margin-top: 18px; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.garage-title { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+.garage-title svg { color: var(--gold); }
+.garage-car { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: var(--surface2); font-weight: 700; overflow: hidden; }
+.garage-car.main { background: linear-gradient(135deg, rgba(243, 201, 105, 0.16), rgba(243, 201, 105, 0.04)); color: var(--gold-hi); }
+.garage-mark { position: absolute; right: 12px; top: 0; width: 22px; height: 30px; display: grid; place-items: center; padding-bottom: 6px; background: var(--grad); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+
+/* phone: card on top, details below, scroll to reveal */
+.deck-mobile { display: block; overflow-y: auto; overflow-x: hidden; padding: 6px 12px 0; scrollbar-width: none; overscroll-behavior: contain; }
+.deck-mobile::-webkit-scrollbar { display: none; }
+.deck-mobile .deck-filter { display: flex; justify-content: center; margin-bottom: 8px; }
+.deck-mobile .deck { max-width: none; margin: 0 auto; }
+.deck-mobile .card { touch-action: pan-y; }
+.deck-mobile .deck-actions { position: sticky; bottom: 0; z-index: 20; padding: 18px 0 14px; margin-top: -4px; background: linear-gradient(180deg, rgba(13, 11, 16, 0), var(--bg) 22%); }
+.deck-details { padding: 56px 4px 30px; min-height: 60vh; }
+.deck-details .worth-card { margin-top: 0; }
+.more-hint { position: absolute; z-index: 15; left: 50%; bottom: 8px; translate: -50% 0; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.deck-mobile .card-info { padding-bottom: 36px; }

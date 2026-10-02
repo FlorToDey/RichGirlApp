@@ -1,19 +1,18 @@
-import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Car, Crown, Gem, Sailboat, Building2, Wallet, Briefcase, Home } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Gem, Home, MapPin, Pencil, Sailboat, Star, Building2 } from 'lucide-react'
 import { useSession } from '../session.jsx'
-import { api, money } from '../api.js'
+import { api, media, money } from '../api.js'
 import PhotoPicker from '../components/PhotoPicker.jsx'
-import TagInput from '../components/TagInput.jsx'
+import { AgeWheel, AutoInput, CarsField, ListField, OptionalField } from '../components/fields.jsx'
+import { BUSINESSES, CARS, CITIES, REALTY, SKILLS, YACHTS } from '../data.js'
 import './onboarding.css'
 
 const ease = [0.22, 1, 0.36, 1]
-const SKILLS = ['Ношу сумки', 'Красиво молчу', 'Готовлю', 'Массаж', 'Фотограф для сторис', 'Права категории B', 'Знаю вина', 'Танцы', 'Гитара', 'Пресс', 'Слушаю', 'Не храплю']
 const WORTH_PRESETS = [10e6, 100e6, 1e9, 10e9]
 const ALLOWANCE = [1000, 5000, 20000, 100000]
 
-// slider 0..100 <-> $1M..$100B on a log scale
 const toWorth = (v) => {
   const raw = Math.pow(10, 6 + v / 20)
   const mag = Math.pow(10, Math.floor(Math.log10(raw)) - 1)
@@ -21,23 +20,53 @@ const toWorth = (v) => {
 }
 const toSlider = (w) => Math.max(0, Math.min(100, (Math.log10(w || 1e6) - 6) * 20))
 
+const years = (n) => {
+  const d = n % 10, h = n % 100
+  if (d === 1 && h !== 11) return `${n} год`
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return `${n} года`
+  return `${n} лет`
+}
+
 function fromUser(u) {
   return {
     role: u.role || null,
     name: u.name || '',
-    age: u.age || '',
+    age: u.age || null,
     city: u.city || '',
     bio: u.bio || '',
     photos: u.photos || [],
     skills: u.skills || [],
     netWorth: u.netWorth || 50e6,
-    incomeSource: u.incomeSource || '',
-    mainCar: u.mainCar || '',
-    companies: u.companies || [],
+    companies: u.companies?.length ? u.companies : [''],
+    cars: u.cars?.length ? u.cars : [{ name: '', main: true }],
     realty: u.realty || '',
     yacht: u.yacht || '',
     allowance: u.allowance || 5000,
   }
+}
+
+function buildSteps(role, edit) {
+  const list = edit ? [] : ['role']
+  list.push('name', 'age', 'city', 'photos', 'bio')
+  if (role === 'f') list.push('wealth', 'business', 'cars', 'extras', 'allowance')
+  return list
+}
+
+function question(id, role) {
+  const f = role === 'f'
+  return {
+    role: 'Привет! Я GoldDigg 💎 Для начала: кто ты в этой истории?',
+    name: f ? 'Как к вам обращаться, королева?' : 'Отлично. Как тебя зовут?',
+    age: 'Сколько тебе лет?',
+    city: f ? 'Где живёшь? Ну, или где сейчас стоит яхта' : 'Из какого ты города?',
+    photos: f ? 'Теперь фото. С яхты особенно приветствуются' : 'Покажи себя. Можно пропустить, но с фото мэтчей сильно больше',
+    bio: f ? 'Пара слов о себе и о том, кого ищешь' : 'Пара слов о себе. Чем зацепишь?',
+    wealth: 'Самое важное. Какое у тебя состояние?',
+    business: 'Откуда деньги? Перечисли свои бизнесы',
+    cars: 'Что в гараже? Основную отметь закладкой',
+    extras: 'Яхта, недвижимость? Если нет, просто жми дальше',
+    allowance: 'И последнее: сколько готова тратить на парня в месяц?',
+  }[id]
 }
 
 export default function Onboarding() {
@@ -46,38 +75,57 @@ export default function Onboarding() {
   const [params] = useSearchParams()
   const edit = params.has('edit') && user.onboarded
   const [form, setForm] = useState(() => fromUser(user))
-  const [[step, dir], setStep] = useState([0, 1])
+  const steps = useMemo(() => buildSteps(form.role, edit), [form.role, edit])
+  const [reached, setReached] = useState(() => (edit ? buildSteps(user.role, true).length : 0))
+  const [active, setActive] = useState(edit ? -1 : 0)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const scroller = useRef(null)
+  const blocks = useRef({})
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+  const done = reached >= steps.length
 
-  const steps = useMemo(() => {
-    const list = edit ? [] : ['role']
-    list.push('basics', 'photos', 'about')
-    if (form.role === 'f') list.push('wealth', 'assets')
-    return list
-  }, [form.role, edit])
-  const current = steps[step]
-  const last = step === steps.length - 1
+  // new question -> glide to the bottom; editing an old one -> bring it into view
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const t = setTimeout(() => {
+      if (active >= 0 && active < reached) blocks.current[steps[active]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      else el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    }, 120)
+    return () => clearTimeout(t)
+  }, [active, reached, steps])
 
-  function validate() {
-    if (current === 'role' && !form.role) return 'Выбери, кто ты'
-    if (current === 'basics') {
-      if (!form.name.trim()) return 'Как тебя зовут?'
-      if (form.age && (form.age < 18 || form.age > 99)) return 'Возраст от 18 лет'
-    }
-    if (current === 'wealth' && !form.netWorth) return 'Укажи состояние'
+  function validate(id) {
+    if (id === 'name' && !form.name.trim()) return 'Без имени никак'
+    if (id === 'wealth' && !form.netWorth) return 'Укажи состояние'
     return ''
   }
 
-  async function next() {
-    const err = validate()
+  function complete(i, roleOverride) {
+    const id = steps[i]
+    const err = validate(id)
     setError(err)
     if (err) return
-    if (!last) return setStep([step + 1, 1])
+    const total = buildSteps(roleOverride || form.role, edit).length
+    if (i >= reached) {
+      setReached(i + 1)
+      setActive(i + 1 < total ? i + 1 : -1)
+    } else {
+      setActive(reached < total ? reached : -1)
+    }
+  }
+
+  async function submit() {
+    setError('')
     setBusy(true)
     try {
-      const u = await api('/me', { method: 'PUT', body: { ...form, age: form.age ? Number(form.age) : null } })
+      const body = {
+        ...form,
+        companies: form.companies.map((c) => c.trim()).filter(Boolean),
+        cars: form.cars.filter((c) => c.name.trim()),
+      }
+      const u = await api('/me', { method: 'PUT', body })
       setUser(u)
       navigate(edit ? '/app/profile' : '/app', { replace: true })
     } catch (e) {
@@ -86,162 +134,304 @@ export default function Onboarding() {
     }
   }
 
-  function back() {
-    setError('')
-    if (step === 0) return edit ? navigate('/app/profile') : null
-    setStep([step - 1, -1])
-  }
-
-  const variants = {
-    enter: (d) => ({ x: d * 60, opacity: 0 }),
-    center: { x: 0, opacity: 1 },
-    exit: (d) => ({ x: d * -60, opacity: 0 }),
-  }
+  const visible = steps.slice(0, Math.min(reached + 1, steps.length))
 
   return (
-    <div className="onb">
-      <div className="onb-top">
-        <motion.button className="icon-btn" onClick={back} style={{ visibility: step === 0 && !edit ? 'hidden' : 'visible' }} whileTap={{ scale: 0.88 }} aria-label="Назад"><ArrowLeft size={20} /></motion.button>
+    <div className="flow-page">
+      <div className="flow-top">
+        <motion.button className="icon-btn" whileTap={{ scale: 0.88 }} onClick={() => navigate(edit ? '/app/profile' : '/')} style={{ visibility: edit ? 'visible' : 'hidden' }} aria-label="Назад"><ArrowLeft size={20} /></motion.button>
         <div className="onb-progress">
-          <motion.div className="onb-progress-fill" animate={{ width: `${((step + 1) / steps.length) * 100}%` }} transition={{ duration: 0.5, ease }} />
+          <motion.div className="onb-progress-fill" animate={{ width: `${(Math.min(reached, steps.length) / steps.length) * 100}%` }} transition={{ duration: 0.6, ease }} />
         </div>
-        <span className="onb-count">{step + 1}/{steps.length}</span>
+        <span className="onb-count">{Math.min(reached, steps.length)}/{steps.length}</span>
       </div>
 
-      <div className="onb-body">
-        <AnimatePresence mode="wait" custom={dir}>
-          <motion.div key={current} className="onb-step" custom={dir} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.38, ease }}>
-            {current === 'role' && (
-              <>
-                <h1>Кто ты в этой истории?</h1>
-                <p className="onb-sub">От этого зависит анкета и кого ты будешь видеть в карточках</p>
-                <div className="role-grid">
-                  <RoleCard active={form.role === 'm'} onClick={() => set({ role: 'm' })} emoji="🕺" title="Я парень" text="Ищу богатую. Готов к яхтам, ужинам и шпицам." />
-                  <RoleCard active={form.role === 'f'} onClick={() => set({ role: 'f' })} emoji="👑" title="Я девушка" text="У меня есть всё. Осталось найти, кому это отдать." />
-                </div>
-              </>
-            )}
+      <div className="flow scroll" ref={scroller}>
+        <LayoutGroup>
+          <div className="flow-inner">
+            {edit && <BotLine fresh={false}>Это твоя анкета. Нажми на любой ответ, чтобы поменять</BotLine>}
+            {visible.map((id, i) => (
+              <div className="flow-step" key={id} ref={(el) => { blocks.current[id] = el }}>
+                <BotLine fresh={!edit && i === reached && i === active}>{question(id, form.role)}</BotLine>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {active === i ? (
+                    <StepInput key="in" id={id} form={form} set={set} setForm={setForm} error={error}
+                      onNext={(roleOverride) => complete(i, roleOverride)} />
+                  ) : i < reached ? (
+                    <Answer key="ans" id={id} form={form} onEdit={() => { setError(''); setActive(i) }} />
+                  ) : null}
+                </AnimatePresence>
+              </div>
+            ))}
 
-            {current === 'basics' && (
-              <>
-                <h1>{form.role === 'f' ? 'Знакомимся, королева' : 'Давай знакомиться'}</h1>
-                <p className="onb-sub">Это увидят в твоей карточке</p>
-                <div className="form-stack">
-                  <label className="field"><span>Имя</span><input className="input" value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Как тебя зовут" maxLength={40} autoFocus /></label>
-                  <div className="form-row">
-                    <label className="field"><span>Возраст</span><input className="input" type="number" inputMode="numeric" value={form.age} onChange={(e) => set({ age: e.target.value })} placeholder="18+" /></label>
-                    <label className="field"><span>Город</span><input className="input" value={form.city} onChange={(e) => set({ city: e.target.value })} placeholder="Москва" maxLength={60} /></label>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {current === 'photos' && (
-              <>
-                <h1>Фотографии</h1>
-                <p className="onb-sub">{form.role === 'f' ? 'Можно с яхты. Особенно с яхты.' : 'Необязательно, но с фото мэтчей сильно больше'}</p>
-                <PhotoPicker value={form.photos} onChange={(photos) => set({ photos })} />
-              </>
-            )}
-
-            {current === 'about' && (
-              <>
-                <h1>О себе</h1>
-                <p className="onb-sub">{form.role === 'f' ? 'Кого ищешь и что любишь' : 'Пара строк, чтобы зацепить'}</p>
-                <div className="form-stack">
-                  <label className="field">
-                    <span>Описание</span>
-                    <textarea className="input" value={form.bio} onChange={(e) => set({ bio: e.target.value })} maxLength={500}
-                      placeholder={form.role === 'f' ? 'Ищу того, кто будет напоминать мне пить воду…' : 'Умею красиво молчать на ужинах…'} />
-                  </label>
-                  {form.role === 'm' && (
-                    <div className="field">
-                      <span>Что умеешь (по желанию)</span>
-                      <div className="chips">
-                        {SKILLS.map((s) => {
-                          const on = form.skills.includes(s)
-                          return (
-                            <motion.button type="button" key={s} className={`chip ${on ? 'on' : ''}`} whileTap={{ scale: 0.92 }}
-                              onClick={() => setForm((f) => ({ ...f, skills: f.skills.includes(s) ? f.skills.filter((x) => x !== s) : [...f.skills, s].slice(0, 8) }))}>{s}</motion.button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {current === 'wealth' && (
-              <>
-                <h1>Состояние</h1>
-                <p className="onb-sub">Главное поле анкеты. Можно немного приукрасить, мы не налоговая</p>
-                <div className="worth-box">
-                  <Gem size={22} className="worth-gem" />
-                  <motion.div key={form.netWorth} className="worth-value gold-text" initial={{ y: 8, opacity: 0.4 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.25 }}>
-                    {money(form.netWorth)}
+            <AnimatePresence>
+              {done && active === -1 && (
+                <motion.div className="flow-step" key="final" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <BotLine fresh={!edit}>{edit ? 'Всё верно? Сохраняем' : form.role === 'f' ? 'Готово! Парни уже в очереди. Вот так тебя увидят 👇' : 'Готово! Вот так тебя увидят богатые 👇'}</BotLine>
+                  <motion.div className="final" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: edit ? 0 : 0.7, duration: 0.6, ease }}>
+                    <MiniCard form={form} />
+                    {error && <div className="error-text">{error}</div>}
+                    <motion.button className="btn btn-gold btn-block" disabled={busy} onClick={submit} whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.01 }}>
+                      {busy ? <span className="spinner" style={{ width: 20, height: 20, borderTopColor: '#2a1a06' }} /> : edit ? 'Сохранить' : <>Начать свайпать <ArrowRight size={18} /></>}
+                    </motion.button>
                   </motion.div>
-                  <input type="range" min={0} max={100} step={1} className="worth-range" value={toSlider(form.netWorth)}
-                    onChange={(e) => set({ netWorth: toWorth(Number(e.target.value)) })}
-                    style={{ '--p': `${toSlider(form.netWorth)}%` }} />
-                  <div className="chips" style={{ justifyContent: 'center' }}>
-                    {WORTH_PRESETS.map((w) => (
-                      <motion.button type="button" key={w} whileTap={{ scale: 0.92 }} className={`chip ${form.netWorth === w ? 'on' : ''}`} onClick={() => set({ netWorth: w })}>{money(w)}</motion.button>
-                    ))}
-                  </div>
-                </div>
-                <label className="field" style={{ marginTop: 22 }}>
-                  <span>Откуда деньги</span>
-                  <div className="input-wrap"><Briefcase size={18} /><input className="input" value={form.incomeSource} onChange={(e) => set({ incomeSource: e.target.value })} placeholder="Нефть, IT, наследство…" maxLength={80} /></div>
-                </label>
-              </>
-            )}
-
-            {current === 'assets' && (
-              <>
-                <h1>Активы</h1>
-                <p className="onb-sub">Покажи парням, ради чего стоит свайпать</p>
-                <div className="form-stack">
-                  <label className="field"><span>Основная машина</span><div className="input-wrap"><Car size={18} /><input className="input" value={form.mainCar} onChange={(e) => set({ mainCar: e.target.value })} placeholder="Rolls-Royce Cullinan" maxLength={80} /></div></label>
-                  <div className="field"><span><Building2 size={13} style={{ verticalAlign: '-2px' }} /> Владелица компаний</span><TagInput value={form.companies} onChange={(companies) => set({ companies })} placeholder="Название и Enter" /></div>
-                  <label className="field"><span>Недвижимость</span><div className="input-wrap"><Home size={18} /><input className="input" value={form.realty} onChange={(e) => set({ realty: e.target.value })} placeholder="Пентхаус, вилла в Ницце…" maxLength={120} /></div></label>
-                  <label className="field"><span>Яхта</span><div className="input-wrap"><Sailboat size={18} /><input className="input" value={form.yacht} onChange={(e) => set({ yacht: e.target.value })} placeholder="42 м, зовут «Котик»" maxLength={80} /></div></label>
-                  <div className="field">
-                    <span><Wallet size={13} style={{ verticalAlign: '-2px' }} /> Готова тратить на парня в месяц</span>
-                    <div className="chips">
-                      {ALLOWANCE.map((a) => (
-                        <motion.button type="button" key={a} whileTap={{ scale: 0.92 }} className={`chip ${form.allowance === a ? 'on' : ''}`} onClick={() => set({ allowance: a })}>{money(a)}</motion.button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <div className="onb-bottom">
-        <AnimatePresence>
-          {error && <motion.div className="error-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{error}</motion.div>}
-        </AnimatePresence>
-        <motion.button className="btn btn-gold btn-block" onClick={next} disabled={busy} whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.01 }}>
-          {busy ? <span className="spinner" style={{ width: 20, height: 20, borderTopColor: '#2a1a06' }} />
-            : last ? (edit ? 'Сохранить' : <><Crown size={18} /> Готово, показывай</>)
-            : current === 'photos' && !form.photos.length ? 'Пропустить' : 'Дальше'}
-        </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </LayoutGroup>
       </div>
     </div>
   )
 }
 
-function RoleCard({ active, onClick, emoji, title, text }) {
+function BotLine({ children, fresh }) {
+  const [typing, setTyping] = useState(fresh)
+  useEffect(() => {
+    if (!fresh) return
+    const t = setTimeout(() => setTyping(false), 650)
+    return () => clearTimeout(t)
+  }, [fresh])
   return (
-    <motion.button type="button" className={`role-card ${active ? 'on' : ''}`} onClick={onClick} whileHover={{ y: -4 }} whileTap={{ scale: 0.97 }}>
-      <motion.span className="role-emoji" animate={active ? { scale: [1, 1.18, 1], rotate: [0, -8, 0] } : {}} transition={{ duration: 0.5 }}>{emoji}</motion.span>
-      <strong>{title}</strong>
-      <span>{text}</span>
-      <span className="role-check">{active && <motion.span layoutId="role-dot" className="role-dot" />}</span>
-    </motion.button>
+    <motion.div className="bot-row" initial={fresh ? { opacity: 0, y: 12 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease }}>
+      <img src="/icon.svg" alt="" className="bot-ava" />
+      <motion.div className="bot-bubble" layout transition={{ duration: 0.25 }}>
+        {typing ? <span className="dots"><span /><span /><span /></span> : <motion.span initial={fresh ? { opacity: 0 } : false} animate={{ opacity: 1 }}>{children}</motion.span>}
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function Card({ children, onNext, nextLabel = 'Дальше', error, delay = 0.55 }) {
+  return (
+    <motion.div className="step-card" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18 } }} transition={{ delay, duration: 0.45, ease }}>
+      {children}
+      <div className="step-foot">
+        <AnimatePresence>{error && <motion.span className="error-text" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>{error}</motion.span>}</AnimatePresence>
+        <motion.button type="button" className="next-pill" onClick={() => onNext()} whileTap={{ scale: 0.94 }} whileHover={{ x: 2 }}>
+          {nextLabel} <ArrowRight size={16} />
+        </motion.button>
+      </div>
+    </motion.div>
+  )
+}
+
+function StepInput({ id, form, set, setForm, onNext, error }) {
+  if (id === 'role') return <RolePicker onPick={(role) => { set({ role }); onNext(role) }} current={form.role} />
+
+  if (id === 'name') return (
+    <Card onNext={onNext} error={error}>
+      <input className="input" value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Имя" maxLength={40} autoFocus
+        onKeyDown={(e) => e.key === 'Enter' && onNext()} />
+    </Card>
+  )
+  if (id === 'age') return (
+    <Card onNext={onNext}>
+      <AgeWheel value={form.age} onChange={(age) => set({ age })} />
+    </Card>
+  )
+  if (id === 'city') return (
+    <Card onNext={onNext} nextLabel={form.city.trim() ? 'Дальше' : 'Пропустить'}>
+      <AutoInput value={form.city} onChange={(city) => set({ city })} options={CITIES} placeholder="Город" icon={MapPin} autoFocus onEnter={onNext} />
+    </Card>
+  )
+  if (id === 'photos') return (
+    <Card onNext={onNext} nextLabel={form.photos.length ? 'Дальше' : 'Пропустить'}>
+      <PhotoPicker value={form.photos} onChange={(photos) => set({ photos })} />
+    </Card>
+  )
+  if (id === 'bio') return (
+    <Card onNext={onNext} nextLabel={form.bio.trim() || form.skills.length ? 'Дальше' : 'Пропустить'}>
+      <textarea className="input" value={form.bio} onChange={(e) => set({ bio: e.target.value })} maxLength={500} autoFocus
+        placeholder={form.role === 'f' ? 'Ищу того, кто будет напоминать мне пить воду…' : 'Умею красиво молчать на ужинах…'} />
+      {form.role === 'm' && (
+        <div className="field" style={{ marginTop: 14 }}>
+          <span>Что умеешь</span>
+          <div className="chips">
+            {SKILLS.map((s) => {
+              const on = form.skills.includes(s)
+              return (
+                <motion.button type="button" key={s} className={`chip ${on ? 'on' : ''}`} whileTap={{ scale: 0.92 }}
+                  onClick={() => setForm((f) => ({ ...f, skills: f.skills.includes(s) ? f.skills.filter((x) => x !== s) : [...f.skills, s].slice(0, 8) }))}>{s}</motion.button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+  if (id === 'wealth') return (
+    <Card onNext={onNext} error={error}>
+      <div className="worth-box">
+        <Gem size={22} className="worth-gem" />
+        <motion.div key={form.netWorth} className="worth-value gold-text" initial={{ y: 8, opacity: 0.4 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.25 }}>
+          {money(form.netWorth)}
+        </motion.div>
+        <GoldSlider value={toSlider(form.netWorth)} onChange={(v) => set({ netWorth: toWorth(v) })} />
+        <div className="chips" style={{ justifyContent: 'center' }}>
+          {WORTH_PRESETS.map((w) => (
+            <motion.button type="button" key={w} whileTap={{ scale: 0.92 }} className={`chip ${form.netWorth === w ? 'on' : ''}`} onClick={() => set({ netWorth: w })}>{money(w)}</motion.button>
+          ))}
+        </div>
+      </div>
+    </Card>
+  )
+  if (id === 'business') return (
+    <Card onNext={onNext} nextLabel={form.companies.some((c) => c.trim()) ? 'Дальше' : 'Пропустить'}>
+      <ListField value={form.companies} onChange={(companies) => set({ companies })} options={BUSINESSES} placeholder="Например, сеть кофеен" addLabel="Добавить бизнес" icon={Building2} />
+    </Card>
+  )
+  if (id === 'cars') return (
+    <Card onNext={onNext} nextLabel={form.cars.some((c) => c.name.trim()) ? 'Дальше' : 'Пропустить'}>
+      <CarsField value={form.cars} onChange={(cars) => set({ cars })} options={CARS} />
+    </Card>
+  )
+  if (id === 'extras') return (
+    <Card onNext={onNext} nextLabel={form.yacht || form.realty ? 'Дальше' : 'Пропустить'}>
+      <div className="form-stack">
+        <OptionalField label="Яхта" addLabel="Добавить яхту" value={form.yacht} onChange={(yacht) => set({ yacht })} options={YACHTS} placeholder="Например, Feadship, 60 м" icon={Sailboat} />
+        <OptionalField label="Недвижимость" addLabel="Добавить недвижимость" value={form.realty} onChange={(realty) => set({ realty })} options={REALTY} placeholder="Например, вилла в Ницце" icon={Home} />
+      </div>
+    </Card>
+  )
+  if (id === 'allowance') return (
+    <Card onNext={onNext}>
+      <div className="allow-grid">
+        {ALLOWANCE.map((a) => (
+          <motion.button type="button" key={a} whileTap={{ scale: 0.95 }} className={`allow ${form.allowance === a ? 'on' : ''}`} onClick={() => set({ allowance: a })}>
+            <strong>{money(a)}</strong><span>в месяц</span>
+            {form.allowance === a && <motion.span layoutId="allow-ring" className="allow-ring" transition={{ type: 'spring', stiffness: 500, damping: 36 }} />}
+          </motion.button>
+        ))}
+      </div>
+    </Card>
+  )
+  return null
+}
+
+const ROLES = [
+  { id: 'm', emoji: '🕺', title: 'Я парень', text: 'Ищу богатую. Готов к яхтам, ужинам и шпицам.' },
+  { id: 'f', emoji: '👑', title: 'Я девушка', text: 'У меня есть всё. Осталось найти, кому это отдать.' },
+]
+
+function RolePicker({ onPick, current }) {
+  const [picked, setPicked] = useState(null)
+  const [origin, setOrigin] = useState({ x: '50%', y: '50%' })
+
+  const pick = (r, e) => {
+    if (picked) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setOrigin({ x: `${(e.clientX || rect.left + rect.width / 2) - rect.left}px`, y: `${(e.clientY || rect.top + rect.height / 2) - rect.top}px` })
+    setPicked(r)
+    setTimeout(() => onPick(r), 1050)
+  }
+
+  return (
+    <motion.div className="role-grid" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.55, duration: 0.45, ease }}>
+      <AnimatePresence mode="popLayout">
+        {ROLES.filter((r) => !picked || r.id === picked).map((r) => (
+          <motion.button type="button" key={r.id} layoutId={`role-${r.id}`} layout
+            className={`role-card ${picked === r.id ? 'picked' : ''} ${current === r.id && !picked ? 'was' : ''}`}
+            style={{ borderRadius: 24, gridColumn: picked ? '1 / -1' : undefined }}
+            onClick={(e) => pick(r.id, e)}
+            whileHover={picked ? undefined : { rotate: [0, -2.2, 2.2, -1.4, 1.4, 0], y: -3, transition: { duration: 0.5 } }}
+            whileTap={picked ? undefined : { scale: 0.97 }}
+            exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.25 } }}
+            transition={{ layout: { duration: 0.55, ease } }}>
+            {picked === r.id && (
+              <motion.span className="role-flood" style={{ left: origin.x, top: origin.y }}
+                initial={{ scale: 0, opacity: 0.9 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.7, ease }} />
+            )}
+            <motion.span layout="position" className="role-emoji"
+              animate={picked === r.id ? { scale: [1, 1.35, 1.15], rotate: [0, -12, 6, 0] } : {}} transition={{ duration: 0.7 }}>{r.emoji}</motion.span>
+            <motion.strong layout="position">{r.title}</motion.strong>
+            <motion.span layout="position" className="role-text">{r.text}</motion.span>
+          </motion.button>
+        ))}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+function GoldSlider({ value, onChange }) {
+  const track = useRef(null)
+  const dragging = useRef(false)
+  const setFrom = (clientX) => {
+    const r = track.current.getBoundingClientRect()
+    onChange(Math.round(Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * 100))
+  }
+  return (
+    <div className="gslider" ref={track} role="slider" tabIndex={0} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label="Состояние"
+      onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); setFrom(e.clientX) }}
+      onPointerMove={(e) => dragging.current && setFrom(e.clientX)}
+      onPointerUp={() => { dragging.current = false }}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') onChange(Math.min(100, value + 2))
+        if (e.key === 'ArrowLeft') onChange(Math.max(0, value - 2))
+      }}>
+      <div className="gslider-rail" />
+      <div className="gslider-fill" style={{ width: `${value}%` }} />
+      <motion.div className="gslider-thumb" style={{ left: `${value}%` }} whileTap={{ scale: 1.15 }}><Gem size={14} /></motion.div>
+    </div>
+  )
+}
+
+function Answer({ id, form, onEdit }) {
+  let content
+  if (id === 'role') {
+    const r = ROLES.find((x) => x.id === form.role)
+    return (
+      <div className="me-row">
+        <motion.button type="button" layoutId={`role-${form.role}`} className="me-bubble me-role" style={{ borderRadius: 20 }} onClick={onEdit}
+          transition={{ layout: { duration: 0.55, ease } }}>
+          <motion.span layout="position">{r.emoji}</motion.span> <motion.span layout="position">{r.title}</motion.span>
+        </motion.button>
+      </div>
+    )
+  }
+  const cars = form.cars.filter((c) => c.name.trim())
+  const companies = form.companies.filter((c) => c.trim())
+  switch (id) {
+    case 'name': content = form.name; break
+    case 'age': content = years(form.age || 25); break
+    case 'city': content = form.city || 'Не скажу'; break
+    case 'photos': content = form.photos.length
+      ? <span className="me-photos">{form.photos.slice(0, 4).map((p) => <img key={p} src={media(p)} alt="" />)}{form.photos.length > 4 && <em>+{form.photos.length - 4}</em>}</span>
+      : 'Пока без фото'; break
+    case 'bio': content = form.bio || form.skills.length ? <span className="me-bio">{form.bio}{form.skills.length > 0 && <span className="me-chips">{form.skills.map((s) => <i key={s}>{s}</i>)}</span>}</span> : 'Пропущу'; break
+    case 'wealth': content = <span className="me-worth"><Gem size={15} /> {money(form.netWorth)}</span>; break
+    case 'business': content = companies.length ? companies.join(', ') : 'Секрет'; break
+    case 'cars': content = cars.length ? <span className="me-cars">{cars.map((c) => <span key={c.name}>{c.main && <Star size={12} fill="currentColor" />} {c.name}</span>)}</span> : 'Езжу на такси'; break
+    case 'extras': content = form.yacht || form.realty ? [form.yacht && `Яхта: ${form.yacht}`, form.realty && `Недвижимость: ${form.realty}`].filter(Boolean).join(' · ') : 'Ни яхты, ни виллы. Пока'; break
+    case 'allowance': content = `${money(form.allowance)} в месяц`; break
+    default: content = null
+  }
+  return (
+    <motion.div className="me-row" initial={{ opacity: 0, x: 24, scale: 0.95 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }} transition={{ duration: 0.4, ease }}>
+      <motion.button type="button" className="me-bubble" onClick={onEdit} whileTap={{ scale: 0.97 }}>
+        {content}
+        <Pencil size={13} className="me-edit" />
+      </motion.button>
+    </motion.div>
+  )
+}
+
+function MiniCard({ form }) {
+  const main = form.cars.find((c) => c.main && c.name.trim())
+  return (
+    <div className="mini-card">
+      {form.photos[0] ? <img src={media(form.photos[0])} alt="" /> : <div className="card-nophoto" style={{ fontSize: 80 }}>{form.name?.[0]}</div>}
+      <div className="mini-info">
+        <h3>{form.name}{form.age ? <span>, {form.age}</span> : null}</h3>
+        {form.city && <div className="card-city"><MapPin size={13} /> {form.city}</div>}
+        {form.role === 'f' && (
+          <div className="card-wealth">
+            <span className="wealth-main"><Gem size={14} /> {money(form.netWorth)}</span>
+            {main && <span className="wealth-car">{main.name}</span>}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

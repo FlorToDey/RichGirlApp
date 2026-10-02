@@ -1,57 +1,108 @@
-.onb { height: 100%; display: flex; flex-direction: column; max-width: 560px; margin: 0 auto; padding: calc(14px + var(--safe-top)) 20px calc(18px + var(--safe-bottom)); }
-.onb-top { display: flex; align-items: center; gap: 12px; }
+.flow-page { height: 100%; display: flex; flex-direction: column; }
+.flow-top { display: flex; align-items: center; gap: 12px; padding: calc(10px + var(--safe-top)) 16px 10px; max-width: 680px; width: 100%; margin: 0 auto; }
 .onb-progress { flex: 1; height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
 .onb-progress-fill { height: 100%; border-radius: 3px; background: var(--grad); }
-.onb-count { color: var(--dim); font-size: 13px; font-weight: 700; min-width: 30px; text-align: right; }
-.onb-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 28px 2px 20px; }
-.onb-step h1 { font-family: var(--head); font-size: clamp(24px, 5vw, 32px); letter-spacing: -0.03em; margin: 0; line-height: 1.15; }
-.onb-sub { color: var(--muted); margin: 10px 0 26px; }
-.onb-bottom { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
-.form-stack { display: flex; flex-direction: column; gap: 18px; }
-.form-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
+.onb-count { color: var(--dim); font-size: 13px; font-weight: 700; min-width: 34px; text-align: right; }
+.flow { flex: 1; min-height: 0; }
+.flow-inner { max-width: 640px; margin: 0 auto; padding: 14px 16px calc(40vh + var(--safe-bottom)); display: flex; flex-direction: column; gap: 22px; }
+.flow-step { display: flex; flex-direction: column; gap: 12px; }
 
-.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.role-card {
-  position: relative; text-align: left;
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 22px 18px 20px; border-radius: var(--radius);
-  background: var(--surface); border: 1.5px solid var(--line);
-  transition: border-color 0.3s, background 0.3s;
-  min-height: 210px;
+.bot-row { display: flex; align-items: flex-end; gap: 10px; max-width: 88%; }
+.bot-ava { width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0; }
+.bot-bubble { background: var(--surface2); border: 1px solid var(--line); padding: 12px 16px; border-radius: 20px 20px 20px 6px; font-size: 16px; font-weight: 600; line-height: 1.4; min-height: 46px; display: flex; align-items: center; }
+.dots { display: inline-flex; gap: 4px; padding: 0 4px; }
+.dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.1s infinite; }
+.dots span:nth-child(2) { animation-delay: 0.15s; }
+.dots span:nth-child(3) { animation-delay: 0.3s; }
+
+.step-card { margin-left: 44px; padding: 16px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25); }
+.step-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 14px; }
+.step-foot .error-text { margin-right: auto; font-size: 13px; }
+.next-pill { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 999px; background: var(--grad); color: #2a1a06; font-weight: 800; font-size: 15px; box-shadow: 0 8px 22px rgba(243, 201, 105, 0.22); }
+
+.me-row { display: flex; justify-content: flex-end; }
+.me-bubble {
+  position: relative; max-width: 82%; text-align: left;
+  padding: 11px 38px 11px 16px; border-radius: 20px 20px 6px 20px;
+  background: linear-gradient(135deg, rgba(255, 231, 168, 0.16), rgba(208, 138, 55, 0.12));
+  border: 1px solid rgba(243, 201, 105, 0.35); color: var(--gold-hi);
+  font-weight: 700; font-size: 15px; line-height: 1.4;
+  transition: border-color 0.2s, background 0.2s;
 }
-.role-card:hover { border-color: var(--line2); }
-.role-card.on { border-color: rgba(243, 201, 105, 0.7); background: linear-gradient(160deg, rgba(243, 201, 105, 0.12), rgba(243, 201, 105, 0.02)); }
-.role-emoji { font-size: 40px; line-height: 1; margin-bottom: 8px; display: inline-block; }
-.role-card strong { font-size: 18px; }
-.role-card > span:not(.role-emoji):not(.role-check) { color: var(--muted); font-size: 14px; line-height: 1.4; }
-.role-check { position: absolute; top: 16px; right: 16px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line2); display: grid; place-items: center; }
-.role-card.on .role-check { border-color: var(--gold); }
-.role-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
+.me-bubble:hover { border-color: rgba(243, 201, 105, 0.7); }
+.me-edit { position: absolute; right: 14px; top: 50%; translate: 0 -50%; opacity: 0.45; transition: opacity 0.2s; }
+.me-bubble:hover .me-edit { opacity: 1; }
+.me-role { padding: 12px 20px; background: var(--grad); color: #2a1a06; border: 0; font-size: 16px; display: inline-flex; gap: 6px; }
+.me-photos { display: inline-flex; gap: 6px; align-items: center; }
+.me-photos img { width: 44px; height: 56px; border-radius: 10px; object-fit: cover; }
+.me-photos em { font-style: normal; color: var(--muted); }
+.me-bio { display: flex; flex-direction: column; gap: 8px; color: var(--text); font-weight: 600; }
+.me-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.me-chips i { font-style: normal; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(243, 201, 105, 0.15); color: var(--gold-hi); }
+.me-worth { display: inline-flex; align-items: center; gap: 6px; font-family: var(--head); font-size: 18px; }
+.me-cars { display: flex; flex-direction: column; gap: 2px; }
+.me-cars span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* role cards */
+.role-grid { margin-left: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role-card {
+  position: relative; overflow: hidden; text-align: left;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 20px 18px; min-height: 190px;
+  background: var(--surface); border: 1.5px solid var(--line2);
+  transition: border-color 0.3s, color 0.4s;
+}
+.role-card:hover { border-color: rgba(243, 201, 105, 0.55); }
+.role-card.was { border-color: rgba(243, 201, 105, 0.55); }
+.role-card > *:not(.role-flood) { position: relative; z-index: 1; }
+.role-emoji { font-size: 42px; line-height: 1; margin-bottom: 10px; display: inline-block; width: fit-content; }
+.role-card strong { font-size: 19px; }
+.role-text { color: var(--muted); font-size: 14px; line-height: 1.4; transition: color 0.4s; }
+.role-card.picked { border-color: transparent; color: #2a1a06; min-height: 150px; }
+.role-card.picked .role-text { color: rgba(42, 26, 6, 0.75); }
+.role-flood { position: absolute; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; border-radius: 50%; background: radial-gradient(circle, #ffe7a8 0%, #f3c969 35%, #d08a37 70%); z-index: 0; pointer-events: none; }
+
+/* wealth */
+.worth-box { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 18px 6px 6px; }
+.worth-gem { color: var(--gold); }
+.worth-value { font-family: var(--head); font-size: clamp(34px, 8vw, 46px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.gslider { position: relative; width: 100%; height: 40px; touch-action: none; cursor: pointer; outline: none; }
+.gslider-rail, .gslider-fill { position: absolute; left: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; }
+.gslider-rail { right: 0; background: var(--surface3); }
+.gslider-fill { background: linear-gradient(90deg, var(--gold-lo), var(--gold)); }
+.gslider-thumb { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: var(--grad); color: #2a1a06; display: grid; place-items: center; box-shadow: 0 0 0 4px var(--surface), 0 6px 18px rgba(0, 0, 0, 0.45); cursor: grab; }
+.gslider:focus-visible .gslider-thumb { box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--gold); }
+
+/* allowance */
+.allow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.allow { position: relative; padding: 16px; border-radius: 18px; background: var(--surface2); border: 1px solid var(--line); text-align: left; display: flex; flex-direction: column; gap: 2px; transition: background 0.25s; }
+.allow strong { font-family: var(--head); font-size: 20px; position: relative; z-index: 1; }
+.allow > span:not(.allow-ring) { color: var(--muted); font-size: 12px; font-weight: 600; position: relative; z-index: 1; }
+.allow.on { background: rgba(243, 201, 105, 0.1); }
+.allow.on strong { color: var(--gold-hi); }
+.allow-ring { position: absolute; inset: -1px; border-radius: 18px; border: 2px solid var(--gold); }
+
+.form-stack { display: flex; flex-direction: column; gap: 18px; }
+
+/* final */
+.final { margin-left: 44px; display: flex; flex-direction: column; gap: 14px; }
+.mini-card { position: relative; height: 340px; border-radius: 24px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+.mini-card > img { width: 100%; height: 100%; object-fit: cover; }
+.mini-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 70px 18px 18px; background: linear-gradient(180deg, transparent, rgba(8, 6, 10, 0.92)); }
+.mini-info h3 { margin: 0; font-size: 24px; font-weight: 800; }
+.mini-info h3 span { font-weight: 500; }
 
 .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .photo-slot { aspect-ratio: 3 / 4; border-radius: 16px; position: relative; }
-.photo-empty { width: 100%; height: 100%; border-radius: 16px; border: 1.5px dashed var(--line2); background: var(--surface); display: grid; place-items: center; color: var(--gold); transition: background 0.25s, border-color 0.25s; }
-.photo-empty:hover { background: var(--surface2); border-color: rgba(243, 201, 105, 0.5); }
+.photo-empty { width: 100%; height: 100%; border-radius: 16px; border: 1.5px dashed var(--line2); background: var(--surface2); display: grid; place-items: center; color: var(--gold); transition: background 0.25s, border-color 0.25s; }
+.photo-empty:hover { background: var(--surface3); border-color: rgba(243, 201, 105, 0.5); }
 .photo-fill { width: 100%; height: 100%; border-radius: 16px; overflow: hidden; position: relative; }
 .photo-fill img { width: 100%; height: 100%; object-fit: cover; }
 .photo-remove { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0, 0, 0, 0.65); display: grid; place-items: center; backdrop-filter: blur(4px); }
 .photo-main { position: absolute; left: 6px; bottom: 6px; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--grad); color: #2a1a06; }
 
-.worth-box { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 28px 20px 22px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
-.worth-gem { color: var(--gold); }
-.worth-value { font-family: var(--head); font-size: clamp(34px, 8vw, 46px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
-.worth-range { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; outline: none;
-  background: linear-gradient(90deg, var(--gold-lo), var(--gold) var(--p), var(--surface3) var(--p)); }
-.worth-range::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gold-hi); border: 4px solid var(--bg); box-shadow: 0 0 0 2px var(--gold), 0 6px 18px rgba(0, 0, 0, 0.4); cursor: grab; transition: transform 0.2s; }
-.worth-range::-webkit-slider-thumb:active { transform: scale(1.12); }
-.worth-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-hi); border: 4px solid var(--bg); box-shadow: 0 0 0 2px var(--gold); }
-
-.tag-row { position: relative; }
-.tag-add { position: absolute; right: 7px; top: 7px; width: 40px; height: 40px; border-radius: 12px; background: var(--grad); color: #2a1a06; display: grid; place-items: center; }
-.tag-add:disabled { opacity: 0.35; }
-.tag-input .tag-row svg { position: static; transform: none; }
-
-@media (min-width: 760px) and (min-height: 700px) {
-  .onb { height: auto; min-height: 100%; justify-content: center; padding-top: 40px; padding-bottom: 40px; }
-  .onb-body { flex: none; min-height: 470px; overflow: visible; }
+@media (max-width: 560px) {
+  .step-card, .role-grid, .final { margin-left: 0; }
+  .role-card { min-height: 180px; padding: 18px 14px; }
+  .bot-bubble { font-size: 15px; }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useDragControls } from 'framer-motion'
-import { BadgeCheck, Briefcase, Building2, Car, Gem, Heart, Home, MapPin, Sailboat, Star, Wallet, X } from 'lucide-react'
+import { BadgeCheck, Building2, Car, Gem, Heart, Home, MapPin, Sailboat, Star, Wallet, X } from 'lucide-react'
 import { media, money } from '../api.js'
 import { useDesktop } from '../hooks.js'
 
@@ -44,14 +44,6 @@ export function ProfileBody({ user }) {
   const [i, setI] = useState(0)
   useEffect(() => setI(0), [user?.id])
   const photos = user.photos?.length ? user.photos : [null]
-  const rows = user.role === 'f' ? [
-    [Car, 'Основная машина', user.mainCar],
-    [Building2, 'Владелица компаний', user.companies?.length ? user.companies.join(', ') : null],
-    [Briefcase, 'Источник дохода', user.incomeSource],
-    [Home, 'Недвижимость', user.realty],
-    [Sailboat, 'Яхта', user.yacht],
-    [Wallet, 'Бюджет на парня', user.allowance ? `${money(user.allowance)} / мес` : null],
-  ].filter((r) => r[2]) : []
 
   return (
     <div className="pbody scroll">
@@ -69,32 +61,64 @@ export function ProfileBody({ user }) {
           {user.verified && <BadgeCheck size={22} className="verified" />}
         </div>
         {user.city && <div className="card-city" style={{ color: 'var(--muted)' }}><MapPin size={14} /> {user.city}</div>}
-
-        {user.role === 'f' && (
-          <motion.div className="worth-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <span>Состояние</span>
-            <strong className="gold-text">{money(user.netWorth)}</strong>
-            <Gem size={60} className="worth-card-gem" />
-          </motion.div>
-        )}
-
-        {user.bio && <p className="pbody-bio">{user.bio}</p>}
-
-        {rows.length > 0 && (
-          <div className="facts">
-            {rows.map(([Icon, label, val], k) => (
-              <motion.div key={label} className="fact" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + k * 0.04 }}>
-                <span className="fact-icon"><Icon size={18} /></span>
-                <div><span>{label}</span><strong>{val}</strong></div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {user.skills?.length > 0 && (
-          <div className="chips" style={{ marginTop: 18 }}>{user.skills.map((s) => <span key={s} className="chip">{s}</span>)}</div>
-        )}
+        <ProfileDetails user={user} />
       </div>
     </div>
+  )
+}
+
+function RevealBlock({ root, children, className, style }) {
+  const anim = root
+    ? { initial: { opacity: 0, y: 40, scale: 0.97 }, whileInView: { opacity: 1, y: 0, scale: 1 }, viewport: { root, amount: 0.35 }, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
+    : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.1 } }
+  return <motion.div className={className} style={style} {...anim}>{children}</motion.div>
+}
+
+// Everything below the photo. With `root` set, blocks fade in as they scroll into that container
+// and fade out again when scrolled back.
+export function ProfileDetails({ user, root }) {
+  const cars = user.cars?.length ? user.cars : user.mainCar ? [{ name: user.mainCar, main: true }] : []
+  const rows = user.role === 'f' ? [
+    [Building2, 'Бизнес', user.companies?.length ? user.companies.join(', ') : null],
+    [Home, 'Недвижимость', user.realty],
+    [Sailboat, 'Яхта', user.yacht],
+    [Wallet, 'Бюджет на парня', user.allowance ? `${money(user.allowance)} / мес` : null],
+  ].filter((r) => r[2]) : []
+
+  return (
+    <>
+      {user.role === 'f' && (
+        <RevealBlock root={root} className="worth-card">
+          <span>Состояние</span>
+          <strong className="gold-text">{money(user.netWorth)}</strong>
+          <Gem size={60} className="worth-card-gem" />
+        </RevealBlock>
+      )}
+
+      {user.bio && <RevealBlock root={root} className="pbody-bio">{user.bio}</RevealBlock>}
+
+      {cars.length > 0 && (
+        <RevealBlock root={root} className="garage">
+          <span className="garage-title"><Car size={15} /> Гараж</span>
+          {[...cars].sort((a, b) => b.main - a.main).map((c) => (
+            <div key={c.name} className={`garage-car ${c.main ? 'main' : ''}`}>
+              <span>{c.name}</span>
+              {c.main && <span className="garage-mark"><Star size={11} fill="#141016" strokeWidth={2.4} /></span>}
+            </div>
+          ))}
+        </RevealBlock>
+      )}
+
+      {rows.map(([Icon, label, val]) => (
+        <RevealBlock root={root} key={label} className="fact" style={{ marginTop: 10 }}>
+          <span className="fact-icon"><Icon size={18} /></span>
+          <div><span>{label}</span><strong>{val}</strong></div>
+        </RevealBlock>
+      ))}
+
+      {user.skills?.length > 0 && (
+        <RevealBlock root={root} className="chips" style={{ marginTop: 18 }}>{user.skills.map((s) => <span key={s} className="chip">{s}</span>)}</RevealBlock>
+      )}
+    </>
   )
 }

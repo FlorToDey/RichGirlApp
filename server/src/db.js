@@ -73,6 +73,9 @@ CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, id);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `)
 
+const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
+if (!userCols.includes('cars')) db.exec("ALTER TABLE users ADD COLUMN cars TEXT NOT NULL DEFAULT '[]'")
+
 export function getSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('jwt_secret')
@@ -82,7 +85,7 @@ export function getSecret() {
   return secret
 }
 
-const JSON_FIELDS = ['photos', 'companies', 'skills']
+const JSON_FIELDS = ['photos', 'companies', 'skills', 'cars']
 
 export function publicUser(row, { full = true } = {}) {
   if (!row) return null
@@ -101,7 +104,6 @@ export function publicUser(row, { full = true } = {}) {
     Object.assign(u, {
       netWorth: row.net_worth,
       mainCar: row.main_car,
-      incomeSource: row.income_source,
       realty: row.realty,
       yacht: row.yacht,
       allowance: row.allowance,

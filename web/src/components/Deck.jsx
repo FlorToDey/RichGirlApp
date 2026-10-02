@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion'
-import { BadgeCheck, Car, Gem, Heart, Info, MapPin, RotateCcw, SlidersHorizontal, Star, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useScroll, useTransform } from 'framer-motion'
+import { BadgeCheck, Car, ChevronDown, Gem, Heart, Info, MapPin, RotateCcw, SlidersHorizontal, Star, X } from 'lucide-react'
 import { api, media, money } from '../api.js'
 import { useSession } from '../session.jsx'
-import ProfileSheet from './ProfileSheet.jsx'
+import ProfileSheet, { ProfileDetails } from './ProfileSheet.jsx'
+import { useDesktop } from '../hooks.js'
 import './deck.css'
 
 const FILTERS = [
@@ -22,6 +23,24 @@ export default function Deck() {
   const [error, setError] = useState('')
   const handles = useRef({})
   const lookingForGirls = user.role === 'm'
+  const desktop = useDesktop()
+  const scrollRef = useRef(null)
+  const [stageH, setStageH] = useState(null)
+  const [scrolled, setScrolled] = useState(false)
+  const { scrollY } = useScroll({ container: scrollRef })
+  const stageScale = useTransform(scrollY, [0, 280], [1, 0.9])
+  const stageOpacity = useTransform(scrollY, [0, 280], [1, 0.55])
+  const hintOpacity = useTransform(scrollY, [0, 50], [1, 0])
+  useMotionValueEvent(scrollY, 'change', (v) => setScrolled(v > 6))
+
+  // on phones the card takes the whole visible area, details live below it
+  useLayoutEffect(() => {
+    if (desktop) { setStageH(null); return }
+    const el = scrollRef.current
+    const ro = new ResizeObserver(() => setStageH(el.clientHeight - (lookingForGirls ? 46 : 0) - 104))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [desktop, lookingForGirls])
 
   const visible = cards?.slice(0, 3) || []
   const top = { current: visible[0] ? { card: visible[0], fling: (a) => handles.current[visible[0].id]?.(a) } : null }
@@ -68,6 +87,14 @@ export default function Deck() {
     return () => window.removeEventListener('keydown', onKey)
   }, [details])
 
+  const topId = visible[0]?.id
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }) }, [topId])
+
+  const showInfo = (card) => {
+    if (desktop) setDetails(card)
+    else scrollRef.current?.scrollTo({ top: stageH * 0.75, behavior: 'smooth' })
+  }
+
   const restart = async () => {
     setCards(null)
     await api('/feed/reset', { method: 'POST' }).catch(() => {})
@@ -76,7 +103,7 @@ export default function Deck() {
 
 
   return (
-    <div className="deck-wrap">
+    <div className={`deck-wrap ${desktop ? '' : 'deck-mobile'}`} ref={scrollRef}>
       {lookingForGirls && (
         <div className="deck-filter">
           <motion.button className={`chip ${minWorth ? 'on' : ''}`} whileTap={{ scale: 0.94 }} onClick={() => setFilterOpen((o) => !o)}>
@@ -94,7 +121,7 @@ export default function Deck() {
         </div>
       )}
 
-      <div className="deck">
+      <motion.div className="deck" style={desktop ? undefined : { height: stageH || '60vh', flex: 'none', scale: stageScale, opacity: stageOpacity, transformOrigin: 'top center' }}>
         {cards === null && <div className="deck-empty"><span className="spinner" /></div>}
         {cards && cards.length === 0 && (
           <motion.div className="deck-empty" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
@@ -106,10 +133,22 @@ export default function Deck() {
         )}
         <AnimatePresence>
           {visible.map((card, i) => (
-            <SwipeCard key={card.id} handles={handles} card={card} depth={i} onSwiped={swiped} onInfo={() => setDetails(card)} />
+            <SwipeCard key={card.id} handles={handles} card={card} depth={i} onSwiped={swiped} onInfo={() => showInfo(card)} mobile={!desktop} locked={scrolled} />
           )).reverse()}
         </AnimatePresence>
-      </div>
+        {!desktop && visible.length > 0 && (
+          <motion.button className="more-hint" style={{ opacity: hintOpacity }} onClick={() => showInfo(visible[0])}>
+            <motion.span animate={{ y: [0, 4, 0] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}><ChevronDown size={18} /></motion.span>
+            листай вниз
+          </motion.button>
+        )}
+      </motion.div>
+
+      {!desktop && visible[0] && (
+        <div className="deck-details" key={visible[0].id}>
+          <ProfileDetails user={visible[0]} root={scrollRef} />
+        </div>
+      )}
 
       <div className="deck-actions">
         <ActionBtn kind="nope" disabled={!visible.length} onClick={() => top.current?.fling('nope')}><X size={30} strokeWidth={2.6} /></ActionBtn>
@@ -131,7 +170,7 @@ function ActionBtn({ kind, children, ...rest }) {
   )
 }
 
-function SwipeCard({ card, depth, onSwiped, onInfo, handles }) {
+function SwipeCard({ card, depth, onSwiped, onInfo, handles, mobile, locked }) {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const rotate = useTransform(x, [-300, 0, 300], [-14, 0, 14])
@@ -181,7 +220,7 @@ function SwipeCard({ card, depth, onSwiped, onInfo, handles }) {
       animate={{ scale: 1 - depth * 0.045, y: depth * 14, opacity: depth > 1 ? 0.6 : 1 }}
       exit={{ opacity: 0, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-      drag={isTop}
+      drag={isTop && !locked ? (mobile ? 'x' : true) : false}
       dragElastic={0.9}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       onDragEnd={onDragEnd}
