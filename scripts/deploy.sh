@@ -4,7 +4,7 @@
 # pass it via env: SSHPASS=... ./scripts/deploy.sh root@host
 set -euo pipefail
 TARGET=${1:-root@194.87.148.14}
-APP_DIR=/opt/golddigg
+APP_DIR=/home/lymoos/golddigg
 cd "$(dirname "$0")/.."
 
 SSH="ssh -o StrictHostKeyChecking=accept-new"

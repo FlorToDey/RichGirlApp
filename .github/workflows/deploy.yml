@@ -22,4 +22,4 @@ jobs:
           sudo apt-get install -y sshpass >/dev/null
           OPTS="-o StrictHostKeyChecking=no"
           sshpass -e scp $OPTS /tmp/golddigg.tgz "$USER@$HOST:/tmp/golddigg.tgz"
-          sshpass -e ssh $OPTS "$USER@$HOST" 'mkdir -p /opt/golddigg && tar xzf /tmp/golddigg.tgz -C /opt/golddigg && APP_DIR=/opt/golddigg bash /opt/golddigg/scripts/server-install.sh'
+          sshpass -e ssh $OPTS "$USER@$HOST" 'mkdir -p /home/lymoos/golddigg && tar xzf /tmp/golddigg.tgz -C /home/lymoos/golddigg && APP_DIR=/home/lymoos/golddigg bash /home/lymoos/golddigg/scripts/server-install.sh'

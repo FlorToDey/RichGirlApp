@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs on the server: installs Docker if needed and (re)starts GoldDigg.
 set -euo pipefail
-APP_DIR=${APP_DIR:-/opt/golddigg}
+APP_DIR=${APP_DIR:-/home/lymoos/golddigg}
 cd "$APP_DIR"
 
 if ! command -v docker >/dev/null 2>&1; then
