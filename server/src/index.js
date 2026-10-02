@@ -9,7 +9,6 @@ import compression from 'compression'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
-import sharp from 'sharp'
 import { Server } from 'socket.io'
 import { db, UPLOAD_DIR, getSecret, publicUser, now } from './db.js'
 import { seed } from './seed.js'
@@ -250,11 +249,27 @@ app.delete('/api/me', auth, (req, res) => {
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } })
 
+// sharp's prebuilt binaries need an x86-64-v2 CPU; on older VPS CPUs we store the original image instead
+const sharp = await import('sharp').then((m) => m.default).catch((e) => {
+  console.warn('sharp unavailable, photos will be stored without resizing:', e.message.split('\n')[0])
+  return null
+})
+const RAW_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+
 app.post('/api/upload', auth, upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Нет файла' })
   try {
-    const name = `${req.user.id}_${crypto.randomBytes(8).toString('hex')}.webp`
-    await sharp(req.file.buffer).rotate().resize(1080, 1350, { fit: 'cover', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(UPLOAD_DIR, name))
+    const id = `${req.user.id}_${crypto.randomBytes(8).toString('hex')}`
+    let name
+    if (sharp) {
+      name = `${id}.webp`
+      await sharp(req.file.buffer).rotate().resize(1080, 1350, { fit: 'cover', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(UPLOAD_DIR, name))
+    } else {
+      const ext = RAW_EXT[req.file.mimetype]
+      if (!ext) throw new Error('unsupported type')
+      name = `${id}.${ext}`
+      fs.writeFileSync(path.join(UPLOAD_DIR, name), req.file.buffer)
+    }
     res.json({ url: `/uploads/${name}` })
   } catch {
     res.status(400).json({ error: 'Не получилось прочитать картинку' })
